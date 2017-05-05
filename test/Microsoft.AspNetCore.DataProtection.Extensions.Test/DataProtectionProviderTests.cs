@@ -4,6 +4,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.DataProtection.Test.Shared;
 using Microsoft.AspNetCore.Testing.xunit;
@@ -39,11 +40,10 @@ namespace Microsoft.AspNetCore.DataProtection
 
         [ConditionalFact]
         [ConditionalRunTestOnlyIfLocalAppDataAvailable]
-        [ConditionalRunTestOnlyOnWindows]
         public void System_NoKeysDirectoryProvided_UsesDefaultKeysDirectory()
         {
-            var keysPath = Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "ASP.NET", "DataProtection-Keys");
-            var tempPath = Path.Combine(Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%"), "ASP.NET", "DataProtection-KeysTemp");
+            var keysPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ASP.NET", "DataProtection-Keys");
+            var tempPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ASP.NET", "DataProtection-KeysTemp");
 
             try
             {
@@ -57,13 +57,17 @@ namespace Microsoft.AspNetCore.DataProtection
                 var protector = DataProtectionProvider.Create("TestApplication").CreateProtector("purpose");
                 Assert.Equal("payload", protector.Unprotect(protector.Protect("payload")));
 
-                // Step 3: Validate that there's now a single key in the directory and that it's protected using Windows DPAPI.
+                // Step 3: Validate that there's now a single key in the directory
                 var newFileName = Assert.Single(Directory.GetFiles(keysPath));
                 var file = new FileInfo(newFileName);
                 Assert.StartsWith("key-", file.Name, StringComparison.OrdinalIgnoreCase);
                 var fileText = File.ReadAllText(file.FullName);
-                Assert.DoesNotContain("Warning: the key below is in an unencrypted form.", fileText, StringComparison.Ordinal);
-                Assert.Contains("This key is encrypted with Windows DPAPI.", fileText, StringComparison.Ordinal);
+                // On Windows, validate that it's protected using Windows DPAPI.
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    Assert.DoesNotContain("Warning: the key below is in an unencrypted form.", fileText, StringComparison.Ordinal);
+                    Assert.Contains("This key is encrypted with Windows DPAPI.", fileText, StringComparison.Ordinal);
+                }
             }
             finally
             {
@@ -106,16 +110,14 @@ namespace Microsoft.AspNetCore.DataProtection
             });
         }
 
-#if NET46 // [[ISSUE60]] Remove this #ifdef when Core CLR gets support for EncryptedXml
         [ConditionalFact]
         [ConditionalRunTestOnlyIfLocalAppDataAvailable]
-        [ConditionalRunTestOnlyOnWindows]
         public void System_UsesProvidedDirectoryAndCertificate()
         {
             var filePath = Path.Combine(GetTestFilesPath(), "TestCert.pfx");
             var store = new X509Store(StoreName.My, StoreLocation.CurrentUser);
             store.Open(OpenFlags.ReadWrite);
-            store.Add(new X509Certificate2(filePath, "password"));
+            store.Add(new X509Certificate2(filePath, "password", X509KeyStorageFlags.Exportable));
             store.Close();
 
             WithUniqueTempDirectory(directory =>
@@ -149,10 +151,6 @@ namespace Microsoft.AspNetCore.DataProtection
                 }
             });
         }
-#elif NETCOREAPP2_0
-#else
-#error Target framework needs to be updated
-#endif
 
         /// <summary>
         /// Runs a test and cleans up the temp directory afterward.
@@ -177,9 +175,9 @@ namespace Microsoft.AspNetCore.DataProtection
 
         private class ConditionalRunTestOnlyIfLocalAppDataAvailable : Attribute, ITestCondition
         {
-            public bool IsMet => Environment.ExpandEnvironmentVariables("%LOCALAPPDATA%") != null;
+            public bool IsMet => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) != null;
 
-            public string SkipReason { get; } = "%LOCALAPPDATA% couldn't be located.";
+            public string SkipReason { get; } = "Environment.SpecialFolder.LocalApplicationData couldn't be located.";
         }
 
         private static string GetTestFilesPath()

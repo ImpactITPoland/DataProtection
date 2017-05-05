@@ -1,8 +1,6 @@
 // Copyright (c) .NET Foundation. All rights reserved.
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
-#if NET46 // [[ISSUE60]] Remove this #ifdef when Core CLR gets support for EncryptedXml
-
 using System;
 using System.Security.Cryptography.X509Certificates;
 
@@ -44,6 +42,11 @@ namespace Microsoft.AspNetCore.DataProtection.XmlEncryption
                 var matchingCerts = store.Certificates.Find(X509FindType.FindByThumbprint, thumbprint, validOnly: true);
                 return (matchingCerts != null && matchingCerts.Count > 0) ? matchingCerts[0] : null;
             }
+            catch (PlatformNotSupportedException)
+            {
+                // LocalMachine\My is not supported on Linux yet
+                return null;
+            }
             finally
             {
                 store.Close();
@@ -51,7 +54,4 @@ namespace Microsoft.AspNetCore.DataProtection.XmlEncryption
         }
     }
 }
-#elif NETSTANDARD1_3
-#else
-#error target frameworks need to be updated.
-#endif
+

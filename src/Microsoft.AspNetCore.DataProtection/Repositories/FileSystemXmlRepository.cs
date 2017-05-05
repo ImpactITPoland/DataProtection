@@ -82,19 +82,14 @@ namespace Microsoft.AspNetCore.DataProtection.Repositories
 
         private static DirectoryInfo GetDefaultKeyStorageDirectory()
         {
-#if NET46
             // Environment.GetFolderPath returns null if the user profile isn't loaded.
             var folderPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (!String.IsNullOrEmpty(folderPath))
+            if (!string.IsNullOrEmpty(folderPath))
             {
                 return GetKeyStorageDirectoryFromBaseAppDataPath(folderPath);
             }
-            else
-            {
-                return null;
-            }
-#elif NETSTANDARD1_3
-            // On core CLR, we need to fall back to environment variables.
+
+            // Fallback to environment variables.
             DirectoryInfo retVal;
 
             var localAppDataPath = Environment.GetEnvironmentVariable("LOCALAPPDATA");
@@ -131,9 +126,6 @@ namespace Microsoft.AspNetCore.DataProtection.Repositories
             {
                 return null;
             }
-#else
-#error target frameworks need to be updated.
-#endif
         }
 
         internal static DirectoryInfo GetKeyStorageDirectoryForAzureWebSites()

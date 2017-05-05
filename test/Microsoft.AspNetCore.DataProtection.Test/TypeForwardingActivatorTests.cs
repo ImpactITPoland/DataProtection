@@ -103,7 +103,7 @@ namespace Microsoft.AspNetCore.DataProtection
         [MemberData(nameof(AssemblyVersions))]
         public void CreateInstance_ForwardsAcrossVersionChanges(Version version)
         {
-#if NET46
+#if NET461
             // run this test in an appdomain without testhost's custom assembly resolution hooks
             var setupInfo = new AppDomainSetup
             {
@@ -132,7 +132,7 @@ namespace Microsoft.AspNetCore.DataProtection
 
             Assert.NotEqual(typeInfo.AssemblyQualifiedName, newName);
             Assert.IsType<ClassWithParameterlessCtor>(activator.CreateInstance(typeof(object), newName, out var forwarded));
-#if NET46
+#if NET461
             Assert.True(forwarded, "Should have forwarded this type to new version or namespace");
 #elif NETCOREAPP2_0
             Assert.False(forwarded, "Should not have forwarded this type to new version or namespace");

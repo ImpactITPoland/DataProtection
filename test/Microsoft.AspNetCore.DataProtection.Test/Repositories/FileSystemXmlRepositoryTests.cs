@@ -13,8 +13,7 @@ namespace Microsoft.AspNetCore.DataProtection.Repositories
 {
     public class FileSystemXmlRepositoryTests
     {
-        [ConditionalFact]
-        [ConditionalRunTestOnlyIfLocalAppDataAvailable]
+        [Fact]
         public void DefaultKeyStorageDirectory_Property()
         {
             // Act
@@ -22,7 +21,7 @@ namespace Microsoft.AspNetCore.DataProtection.Repositories
 
             // Assert
             Assert.Equal(defaultDirInfo.FullName,
-                new DirectoryInfo(Path.Combine(GetLocalApplicationData(), "ASP.NET", "DataProtection-Keys")).FullName);
+                new DirectoryInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ASP.NET", "DataProtection-Keys")).FullName);
         }
 
         [Fact]
@@ -155,24 +154,6 @@ namespace Microsoft.AspNetCore.DataProtection.Repositories
                     dirInfo.Delete(recursive: true);
                 }
             }
-        }
-
-        private static string GetLocalApplicationData()
-        {
-#if NETCOREAPP2_0
-            return Environment.GetEnvironmentVariable("LOCALAPPDATA");
-#elif NET46
-            return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-#else
-#error Target framework needs to be updated
-#endif
-        }
-
-        private class ConditionalRunTestOnlyIfLocalAppDataAvailable : Attribute, ITestCondition
-        {
-            public bool IsMet => GetLocalApplicationData() != null;
-
-            public string SkipReason { get; } = "%LOCALAPPDATA% couldn't be located.";
         }
     }
 }

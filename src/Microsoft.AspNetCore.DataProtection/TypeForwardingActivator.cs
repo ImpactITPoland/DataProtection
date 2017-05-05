@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
@@ -39,16 +40,14 @@ namespace Microsoft.AspNetCore.DataProtection
                 forwardedTypeName = originalTypeName.Replace(OldNamespace, CurrentNamespace);
             }
 
-#if NET46
-            if (candidate || forwardedTypeName.Contains(CurrentNamespace))
+            if (!RuntimeInformation.FrameworkDescription.StartsWith(".NET Core"))
             {
-                candidate = true;
-                forwardedTypeName = RemoveVersionFromAssemblyName(forwardedTypeName);
+                if (candidate || forwardedTypeName.Contains(CurrentNamespace))
+                {
+                    candidate = true;
+                    forwardedTypeName = RemoveVersionFromAssemblyName(forwardedTypeName);
+                }
             }
-#elif NETSTANDARD1_3
-#else
-#error Target framework needs to be updated
-#endif
 
             if (candidate)
             {
